@@ -1,10 +1,12 @@
-## Lorenz Attractor Demo
+## Lorenz Attractor
 
-<video src="https://raw.githubusercontent.com/pheliml/projects/blob/master/chaos-theory/src/assets/LorenzAttrfixed.mp4"
-       controls 
-       autoplay 
-       loop 
-       muted 
-       width="600">
-Your browser does not support the video tag.
-</video>
+https://github.com/user-attachments/assets/92041507-f934-4c30-a345-67d571853c0d
+
+## Rossler Attractor
+
+https://github.com/user-attachments/assets/68d3a3dc-623a-4200-b703-984cbee1b0d6
+
+## Double Pendulum
+
+https://github.com/user-attachments/assets/860dd15d-7144-4fbc-91b2-cac5edcb58d7
+
