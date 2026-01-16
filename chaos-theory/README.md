@@ -1,6 +1,6 @@
 ## Lorenz Attractor Demo
 
-<video src="https://raw.githubusercontent.com/pheliml/projects/master/chaos-theory/src/assets/LorenzAttrfixed.mp4"
+<video src="https://raw.githubusercontent.com/pheliml/projects/blob/master/chaos-theory/src/assets/LorenzAttrfixed.mp4"
        controls 
        autoplay 
        loop 
