@@ -1,9 +1,6 @@
 # Chaos Theory
-This project is under construction. 
-
-The eventual aim will be to provide access via a package manager to animated equations from Chaos Theory disttributed as MP4 files
-
-Below are some examples of the end product.
+MP4 representations of the Lorenz Attractor, Rossler Attractor
+and the Double Pendulum
 
 This project uses the manim library
 
