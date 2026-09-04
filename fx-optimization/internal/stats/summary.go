@@ -6,17 +6,14 @@ import (
 	"math"
 )
 
-// logPrecision is the number of decimal places retained when a Summary is logged.
-// The Summary fields themselves are always exact.
 const logPrecision = 4
 
-// Summary describes the distribution of a set of observations.
 type Summary struct {
 	Count  int
 	Mean   float64
 	Min    float64
 	Max    float64
-	StdDev float64 // Sample standard deviation (Bessel-corrected); zero when Count < 2.
+	StdDev float64
 }
 
 // Summarise computes descriptive statistics for values.
@@ -40,15 +37,12 @@ func Summarise(values []float64) Summary {
 	}
 	s.Mean = sum / float64(s.Count)
 
-	// A single observation has no spread, and the n-1 denominator is undefined.
+	// A single observation has no spread.
 	if s.Count < 2 {
 		return s
 	}
 
-	// Two-pass variance: subtracting the known mean first avoids the catastrophic
-	// cancellation that a sum-of-squares accumulator suffers when the mean is
-	// large relative to the spread — exactly the case here, where costs cluster
-	// tightly around a few hundred USD.
+	// Work out the mean first, then measure how far each value sits from it.
 	sumSqDev := 0.0
 	for _, v := range values {
 		d := v - s.Mean
@@ -59,8 +53,7 @@ func Summarise(values []float64) Summary {
 	return s
 }
 
-// LogValue renders the Summary as a slog group, so a call site can pass it as a
-// single attribute value.
+// LogValue renders the Summary as a single slog attribute.
 func (s Summary) LogValue() slog.Value {
 	return slog.GroupValue(
 		slog.Int("count", s.Count),

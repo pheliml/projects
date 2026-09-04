@@ -12,18 +12,18 @@ type Params struct {
 	BaseMid  float64
 	TickSize float64
 
-	AnnualVol      float64 // mean of the volatility process
+	AnnualVol      float64 // average; actual volatility wanders around it
 	VolLogSD       float64
 	VolHalfLifeSec float64
 
 	BaseSpread        float64
 	SpreadLogSD       float64
 	SpreadHalfLifeSec float64
-	SpreadVolBeta     float64 // spread elasticity to volatility
+	SpreadVolBeta     float64 // how hard spread reacts to volatility
 	MinSpreadTicks    float64
 
 	BaseLiquidity  float64 // base currency per second
-	LiqVolBeta     float64 // liquidity elasticity to volatility; negative
+	LiqVolBeta     float64 // how hard volume reacts to volatility; negative
 	LiqLogSD       float64
 	LiqHalfLifeSec float64
 
@@ -60,10 +60,9 @@ func EURUSD() Params {
 	}
 }
 
-// GenerateMarket simulates a jump-diffusion mid with stochastic volatility,
-// plus spread and liquidity that mean-revert and widen/thin with volatility.
-// Volatility and liquidity are per-unit-time, so the regime does not change
-// with the slice count.
+// GenerateMarket builds a series of market snapshots covering the horizon.
+// Volatility is per year and liquidity per second, so asking for more slices
+// samples the same market more finely, not a different one.
 func GenerateMarket(p Params, slices int, horizon time.Duration, rng *rand.Rand) []model.MarketSlice {
 	if slices <= 0 {
 		return nil
@@ -96,7 +95,7 @@ func GenerateMarket(p Params, slices int, horizon time.Duration, rng *rand.Rand)
 		vol := p.AnnualVol * logNormalFactor(volX, p.VolLogSD)
 		volRatio := vol / p.AnnualVol
 
-		// -sigma^2/2 keeps the mid a martingale.
+		// The -sigma^2/2 stops the price creeping upward over time.
 		sigma := vol * math.Sqrt(dtYears)
 		logReturn := -0.5*sigma*sigma + sigma*rng.NormFloat64()
 		if jumpProb > 0 && rng.Float64() < jumpProb {
@@ -127,8 +126,8 @@ func GenerateMarket(p Params, slices int, horizon time.Duration, rng *rand.Rand)
 	return market
 }
 
-// ou is an exact-discretisation Ornstein-Uhlenbeck process: its stationary
-// distribution does not depend on the step size.
+// ou is a value that drifts at random but is always pulled back toward zero.
+// Each step is worked out exactly, so its range doesn't depend on step size.
 type ou struct {
 	decay   float64
 	shockSD float64
@@ -145,7 +144,7 @@ func newOU(statSD, halfLifeSec, dt float64, rng *rand.Rand) *ou {
 		o.decay = math.Exp(-math.Ln2 / halfLifeSec * dt)
 		o.shockSD = statSD * math.Sqrt(1-o.decay*o.decay)
 	}
-	o.x = statSD * rng.NormFloat64() // start stationary
+	o.x = statSD * rng.NormFloat64() // start somewhere in its normal range
 	return o
 }
 
@@ -157,7 +156,7 @@ func (o *ou) next(rng *rand.Rand) float64 {
 	return o.x
 }
 
-// logNormalFactor returns a multiplicative factor with expectation 1.
+// logNormalFactor turns a log-space wobble into a multiplier averaging 1.
 func logNormalFactor(x, sd float64) float64 {
 	return math.Exp(x - sd*sd/2)
 }

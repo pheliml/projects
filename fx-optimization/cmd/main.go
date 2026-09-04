@@ -53,17 +53,14 @@ func main() {
 	logger := slog.New(handler)
 	slog.SetDefault(logger)
 
-	// Each goroutine writes only its own index, so the WaitGroup is the only
-	// synchronisation needed to publish the results safely.
+	// Each goroutine writes only its own index, so no lock is needed.
 	results := make([]cost.Breakdown, numRuns)
 	errs := make([]error, numRuns)
 
 	var wg sync.WaitGroup
 	for i := range numRuns {
-		// Draw seeds from the global source, which is randomly seeded and safe for
-		// concurrent use. Seeding per run from time.Now() would hand many of these
-		// near-simultaneous goroutines the same stream, collapsing the variance we
-		// are trying to measure.
+		// One seed per run from the global source; time.Now() would hand many of
+		// these goroutines the same stream.
 		seed := rand.Int63()
 
 		wg.Add(1)

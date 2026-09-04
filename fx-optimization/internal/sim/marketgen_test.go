@@ -121,8 +121,8 @@ func TestSpreadRespectsTickGrid(t *testing.T) {
 	}
 }
 
-// Aggregated across seeds, not slices: with half-lives of tens of seconds a
-// single 300s path holds only a handful of independent regime draws.
+// Aggregated across seeds, not slices: one 300s path holds only a handful of
+// independent regime draws.
 func TestStressCouplesSpreadAndLiquidity(t *testing.T) {
 	p := EURUSD()
 	const runs = 300

@@ -9,8 +9,8 @@ import (
 )
 
 type Params struct {
-	PermanentCoeff float64 // Y in dP/P = Y * sigma_T * sqrt(X / V_T)
-	TemporaryCoeff float64 // K in dP/P = K * sigma_T * participation
+	PermanentCoeff float64 // how far a finished order shifts the price
+	TemporaryCoeff float64 // how much rushing costs on top
 }
 
 func EURUSDParams() Params {
@@ -21,7 +21,7 @@ type Breakdown struct {
 	Spread    float64
 	Temporary float64
 	Permanent float64
-	Timing    float64 // drift of the unaffected mid from arrival; zero mean
+	Timing    float64 // how far the price moved while you traded; averages to zero
 	Total     float64
 
 	Arrival  float64
@@ -53,8 +53,7 @@ func Shortfall(p Params, order model.Order, schedule []float64, market []model.M
 	dt := order.Horizon().Seconds() / float64(len(schedule))
 	arrival := market[0].MidPrice
 
-	// Impact is normalised over the whole horizon, not per slice, so it depends
-	// on the order's footprint
+	// Impact is measured over the whole horizon, not per slice.
 	quantity, sumVol, sumLiq := 0.0, 0.0, 0.0
 	for i, qty := range schedule {
 		quantity += qty
