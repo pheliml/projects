@@ -14,30 +14,33 @@ import (
 	"fxopt/internal/strategy"
 )
 
-// run executes a single simulation and returns the total execution cost in the
-// order's quote currency.
-func run(id int, seed int64, logger *slog.Logger) float64 {
+func run(id int, seed int64, logger *slog.Logger) (cost.Breakdown, error) {
 	rng := rand.New(rand.NewSource(seed))
 
 	order := model.Order{
 		Pair:       "EUR/USD",
+		Side:       model.Buy,
 		Notional:   10_000_000,
 		HorizonSec: 300,
 		Slices:     10000,
 	}
 
-	market := sim.GenerateMarket(order.Slices, rng)
+	market := sim.GenerateMarket(sim.EURUSD(), order.Slices, order.Horizon(), rng)
 	schedule := strategy.TWAP(order)
-	totalCost := cost.ExecutionCost(order, schedule, market)
 
-	logger.Debug("Run complete", "run", id, "cost", totalCost, "cur", "USD")
+	breakdown, err := cost.Shortfall(cost.EURUSDParams(), order, schedule, market)
+	if err != nil {
+		return cost.Breakdown{}, err
+	}
 
-	return totalCost
+	logger.Debug("Run complete", "run", id, "cost", breakdown.Total, "bps", breakdown.Bps(), "cur", "USD")
+
+	return breakdown, nil
 }
 
 func main() {
 
-	const numRuns = 100
+	const numRuns = 10000
 
 	start := time.Now()
 	defer func() {
@@ -52,7 +55,8 @@ func main() {
 
 	// Each goroutine writes only its own index, so the WaitGroup is the only
 	// synchronisation needed to publish the results safely.
-	costs := make([]float64, numRuns)
+	results := make([]cost.Breakdown, numRuns)
+	errs := make([]error, numRuns)
 
 	var wg sync.WaitGroup
 	for i := range numRuns {
@@ -65,10 +69,33 @@ func main() {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			costs[i] = run(i, seed, logger)
+			results[i], errs[i] = run(i, seed, logger)
 		}()
 	}
 	wg.Wait()
 
-	logger.Info("Execution cost summary", "cur", "USD", "cost", stats.Summarise(costs))
+	for i, err := range errs {
+		if err != nil {
+			logger.Error("Run failed", "run", i, "err", err)
+			os.Exit(1)
+		}
+	}
+
+	logger.Info("Implementation shortfall", "cur", "USD",
+		"total", stats.Summarise(project(results, func(b cost.Breakdown) float64 { return b.Total })))
+	logger.Info("Shortfall in basis points",
+		"bps", stats.Summarise(project(results, cost.Breakdown.Bps)))
+	logger.Info("Cost components", "cur", "USD",
+		"spread", stats.Summarise(project(results, func(b cost.Breakdown) float64 { return b.Spread })),
+		"temporary", stats.Summarise(project(results, func(b cost.Breakdown) float64 { return b.Temporary })),
+		"permanent", stats.Summarise(project(results, func(b cost.Breakdown) float64 { return b.Permanent })),
+		"timing", stats.Summarise(project(results, func(b cost.Breakdown) float64 { return b.Timing })))
+}
+
+func project(results []cost.Breakdown, field func(cost.Breakdown) float64) []float64 {
+	values := make([]float64, len(results))
+	for i, r := range results {
+		values[i] = field(r)
+	}
+	return values
 }
