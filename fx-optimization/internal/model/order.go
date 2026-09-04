@@ -1,5 +1,7 @@
 package model
 
+import "time"
+
 type Side int
 
 const (
@@ -24,4 +26,8 @@ type Order struct {
 	Notional   float64
 	HorizonSec int
 	Slices     int
+}
+
+func (o Order) Horizon() time.Duration {
+	return time.Duration(o.HorizonSec) * time.Second
 }
